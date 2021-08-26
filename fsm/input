@@ -1,0 +1,7 @@
+4 3 3
+a = FLIP_FLOP i_1
+old_a = FLIP_FLOP a
+a_dup = FLIP_FLOP i_1
+a
+a_dup
+old_a
