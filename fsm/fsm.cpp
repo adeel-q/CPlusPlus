@@ -8,6 +8,7 @@
 
 using namespace std;
 
+
 // Mapping of raw input token against known possible operation types.
 Fsm::OperatorEnum Fsm::whichOperator(std::string& input)
 {
@@ -18,7 +19,6 @@ Fsm::OperatorEnum Fsm::whichOperator(std::string& input)
     if (input == "XOR") { return OperatorEnum::XOR;}
     else { return OperatorEnum::NO_OPERATOR;}
 };
-
 
 
 /*
@@ -146,7 +146,7 @@ void Fsm::getUserInput()
             struct signal_data temp;
             temp.operation = NO_OPERATOR;
             signals[key] = temp;
-            internal_signal_keys.push_back(key);
+            internalSignals.push_back(key);
         }
     }
 
@@ -155,7 +155,7 @@ void Fsm::getUserInput()
     {
         std::string key;
         std::getline(std::cin, key);
-        signals_to_display.push_back(key);
+        signalsToDisplay.push_back(key);
     }
 };
 
@@ -164,34 +164,34 @@ void Fsm::getUserInput()
 
     Description: Outputs beginning state of signals that are marked for output, recalculates the next state, and prints the transition
 
-    Inputs: signals_state, a reference to the current state of signal data
+    Inputs: state, a reference to the current state of signal data
 
-    Outputs: signals_state passed in by reference
+    Outputs: state passed in by reference
 */
-void Fsm::runOneCycle(std::map <std::string, struct signal_data>& signals_state)
+void Fsm::runOneCycle(std::map <std::string, struct signal_data>& state)
 {
-    // cout << getSignalStr(signals_state) << endl;
+    // cout << getSignalStr(state) << endl;
     cout << "Pre-conditions: " << endl;
-    for (auto& signal : signals_state)
+    for (auto& signal : state)
     {
-        cout << signal.first  << "=" << signal.second.current_value << endl;
+        cout << signal.first  << "=" << signal.second.current_value << " ";
     }
-
-    displaySignals(signals_state);
+    cout << endl;
+    displaySignals(state);
     cout << " --> ";
     
     // DFS to find the first signal able to be evaluated
     
     std::stack<std::string> theStack;
 
-    for (auto signal : signals_state)
+    for (auto signal : state)
     {
         theStack.push(signal.first);
     }
 
     while (theStack.size() > 0)
     {
-        struct signal_data & temp = signals_state[theStack.top()];
+        struct signal_data & temp = state[theStack.top()];
         std::string st = theStack.top(); // Take a signal from the stack
         theStack.pop();
         if (temp.calculated) 
@@ -214,7 +214,7 @@ void Fsm::runOneCycle(std::map <std::string, struct signal_data>& signals_state)
                 bool args_calculated = true;
                 for ( auto& arg : temp.arguments )
                 {
-                    if (!signals_state[arg].calculated)
+                    if (!state[arg].calculated)
                     {
                         theStack.push(st); // Push this same node back on, we have not yet calculate its value
                         theStack.push(arg); // Push the argument that needs calculation
@@ -225,17 +225,17 @@ void Fsm::runOneCycle(std::map <std::string, struct signal_data>& signals_state)
                 // Once both (or single) operands are calculated, calculate current signal
                 if (args_calculated)
                 {
-                    doOperation(signals_state, temp);
+                    doOperation(state, temp);
                     temp.calculated = true;
                 }
             }
         }
     }
     
-    auto copy = signals_state; // Maintain the original signal values
+    auto copy = state; // Maintain the original signal values
 
     // Refresh signal states to non-calculated state. Refresh all FF's to new values and calculated state
-    for (auto& signal : signals_state)
+    for (auto& signal : state)
     {
         // Important: refresh any flip flops now
         if (signal.second.operation == OperatorEnum::FLIP_FLOP)
@@ -249,9 +249,9 @@ void Fsm::runOneCycle(std::map <std::string, struct signal_data>& signals_state)
         }
     }
 
-    displaySignals(signals_state);
+    displaySignals(state);
     cout << endl << endl;
-    // cout << getSignalStr(signals_state) << endl << endl;
+    // cout << getSignalStr(state) << endl << endl;
 };
 
 
@@ -269,7 +269,7 @@ void Fsm::runOneCycle(std::map <std::string, struct signal_data>& signals_state)
 void Fsm::generateOutputs()
 {
     // We have 2 ^ internal_signal_keys.length() possible permuations of inputs
-    unsigned int max_permuations = 1 << internal_signal_keys.size();
+    unsigned int max_permuations = 1 << internalSignals.size();
     // (0b000 = 0b1...111) 0b000
     // Generate a look up table of the permuations we want to try. Each permuation is of internal_signal_keys.size()
     static std::vector < std::vector <bool> > lut; // Reduce stack usage
@@ -277,7 +277,7 @@ void Fsm::generateOutputs()
     for (unsigned int i = 0;  i < max_permuations; i++)
     {
         std::vector<bool> temp;
-        for (unsigned int shift = 0; shift < internal_signal_keys.size(); shift++)
+        for (unsigned int shift = 0; shift < internalSignals.size(); shift++)
         {
             temp.push_back((i >> (shift & 0b1)) ? true : false);
         }
@@ -287,47 +287,47 @@ void Fsm::generateOutputs()
     // For every permutation we generate a signal state. 
     // For every successive signal state, we must again permuate the inputs to generate the next signal state
     // We will have a lot of signal states so we reduce the amount by checking if the resultant next state has already ran through runOneCycle 
-    auto start_state = signals; // Entry point, the initial state
+    auto startState = signals; // Entry point, the initial state
 
     std::queue<std::map< std::string, struct signal_data>> theQueue; // Queue to hold the subsequent resultant arrays to runOneCycle on
 
-    std::set<std::string> states_visited; // Set to track which state we have already attempted to runOneCycle on
+    std::set<std::string> statesVisited; // Set to track which state we have already attempted to runOneCycle on
 
-    theQueue.push(start_state); // Begin by pushing the first state
+    theQueue.push(startState); // Begin by pushing the first state
     
 
     // cout << "start state " << getSignalStr(start_state) << endl;
 
     while (theQueue.size() > 0)
     {
-        auto curr_state = theQueue.front(); // Deque state
+        auto currentState = theQueue.front(); // Deque state
         theQueue.pop();
         for (unsigned int kk = 0;  kk < lut.size(); kk++)
         {
-            auto next_state = curr_state; // Save a version of the current state to permute
+            auto nextState = currentState; // Save a version of the current state to permute
             // We need to perform calculations for each possible permutation of internal_signals (beware)
             // Fix intenal signals here
 
-            for (int n = 0; n < internal_signal_keys.size(); n++)
+            for (int n = 0; n < internalSignals.size(); n++)
             {
-                next_state[internal_signal_keys[n]].current_value = lut[kk][n];
-                next_state[internal_signal_keys[n]].calculated = true;
+                nextState[internalSignals[n]].current_value = lut[kk][n];
+                nextState[internalSignals[n]].calculated = true;
             }
 
             // Check if we have ran this state before
-            auto str = getSignalStr(next_state);
-            auto search = states_visited.find(str);
-            if (search != states_visited.end()) 
+            auto str = getSignalStr(nextState);
+            auto search = statesVisited.find(str);
+            if (search != statesVisited.end()) 
             {
                 // cout << "exists in set " << *search << endl << endl;
             } 
             else 
             {
-                states_visited.insert(str); // This is now a state we are about to transition FROM, add to the set
+                statesVisited.insert(str); // This is now a state we are about to transition FROM, add to the set
                 // cout << "add to set " << str << endl << endl;;
                 // Populate next_state here
-                runOneCycle(next_state);
-                theQueue.push(next_state); // Push this state to calculate new resultant transitions
+                runOneCycle(nextState);
+                theQueue.push(nextState); // Push this state to calculate new resultant transitions
             }
         }
     }
@@ -335,18 +335,18 @@ void Fsm::generateOutputs()
 
 
 /*
-    Purpose: Given all signals state map and the state to evaluate, perform evaluation
+    Purpose: Given a signal state map and a signal to evaluate, perform evaluation
 
     Description: Most operations rely on internal arguments list which refer to other signals in the
             map which have been presumably evaluated prior to making this call.
 
-    Inputs: signals_state map and the signal_data to update
+    Inputs: state map and the signal_data to update
 
-    Outputs: signals_state and temp (passed in by reference)
+    Outputs: state and temp (passed in by reference)
 
     TODO: Move method as struct signal_data's member
 */
-void Fsm::doOperation(std::map< std::string, struct signal_data>& signals_state, struct signal_data& temp)
+void Fsm::doOperation(std::map< std::string, struct signal_data>& state, struct signal_data& temp)
 {
     // Attempt operation
     // Giant switch for now, optimize so that arguments list are passed in to a function pointer
@@ -354,22 +354,22 @@ void Fsm::doOperation(std::map< std::string, struct signal_data>& signals_state,
     {
         case OperatorEnum::FLIP_FLOP:
         {
-            temp.current_value;
+            temp.current_value;  // Flip flop operations are not really operations. They get updated at the end of signal evaulations. See caller.
             break;
         }
         case OperatorEnum::AND:
         {
-            temp.current_value = andGate(signals_state[temp.arguments[0]].current_value, signals_state[temp.arguments[1]].current_value);
+            temp.current_value = andGate(state[temp.arguments[0]].current_value, state[temp.arguments[1]].current_value);
             break;
         }
         case OperatorEnum::OR:
         {
-            temp.current_value = orGate(signals_state[temp.arguments[0]].current_value, signals_state[temp.arguments[1]].current_value);
+            temp.current_value = orGate(state[temp.arguments[0]].current_value, state[temp.arguments[1]].current_value);
             break;
         }
         case OperatorEnum::NOT:
         {
-            temp.current_value = notGate(signals_state[temp.arguments[0]].current_value, false);
+            temp.current_value = notGate(state[temp.arguments[0]].current_value, false);
             break;
         }
         case OperatorEnum::NO_OPERATOR:
@@ -387,14 +387,14 @@ void Fsm::doOperation(std::map< std::string, struct signal_data>& signals_state,
 
     Description: The user argument signals_to_display holds keys for the signals to display
 
-    Inputs: signals_state map
+    Inputs: state map
 
     Outputs: std::string represetning all concatenated signal values.
 */
-std::string Fsm::getSignalStr(std::map< std::string, struct signal_data>& signals_state)
+std::string Fsm::getSignalStr(std::map< std::string, struct signal_data>& state)
 {
     std::string ret;
-    for ( auto& signal : signals_state )
+    for ( auto& signal : state )
     {
         ret += signal.second.current_value ? "1" : "0";
     }
@@ -412,12 +412,12 @@ std::string Fsm::getSignalStr(std::map< std::string, struct signal_data>& signal
 
     TODO: Move method as struct signal_data's member
 */
-void Fsm::displaySignals(std::map< std::string, struct signal_data>& signals_state)
+void Fsm::displaySignals(std::map< std::string, struct signal_data>& state)
 {
     // Iterate thru signal and internal_signal map and print the current_value if display flag is set.
-    for ( auto& signal : signals_to_display )
+    for ( auto& signal : signalsToDisplay )
     {
-        cout << signals_state[signal].current_value;
+        cout << state[signal].current_value;
     }
 };
 
