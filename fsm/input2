@@ -1,10 +1,6 @@
-5 4 5
+5 4 1
 a = b OR c
 d = FLIP_FLOP a
 b = input_1 AND d
 c = NOT d
-input_1
-a
-b
-c
 d
