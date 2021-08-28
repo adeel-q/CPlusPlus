@@ -255,7 +255,7 @@ void Fsm::runOneCycle(std::map <std::string, struct signal_data>& signals_state)
     Description:    Permutes the inputs for every state transtiion possible. Attempts to transtiion state.
                     If the current state has already been transitioned before, it will be ignored. We can tell
                     which state has been transitioned by generating a bitstring tracking individual signal values.
-                    // TODO: This isn't working 100%, but I am able to generate all states at least once.
+                    // TODO: This isn't working 100% to ignore don't care states
     Inputs: None
 
     Outputs: Void
@@ -288,7 +288,7 @@ void Fsm::generateOutputs()
     std::set<std::string> states_visited; // Set to track which state we have already attempted to runOneCycle on
 
     theQueue.push(start_state); // Begin by pushing the first state
-    states_visited.insert(getSignalStr(start_state)); // Add this state to the set
+    
 
     // cout << "start state " << getSignalStr(start_state) << endl;
 
@@ -308,10 +308,7 @@ void Fsm::generateOutputs()
                 next_state[internal_signal_keys[n]].calculated = true;
             }
 
-            // Populate next_state here
-            runOneCycle(next_state);
-            
-            // Check if this resultant next_state is a state we have already transitioned FROM
+            // Check if we have ran this state before
             auto str = getSignalStr(next_state);
             auto search = states_visited.find(str);
             if (search != states_visited.end()) 
@@ -322,6 +319,8 @@ void Fsm::generateOutputs()
             {
                 states_visited.insert(str); // This is now a state we are about to transition FROM, add to the set
                 // cout << "add to set " << str << endl << endl;;
+                // Populate next_state here
+                runOneCycle(next_state);
                 theQueue.push(next_state); // Push this state to calculate new resultant transitions
             }
         }
