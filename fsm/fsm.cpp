@@ -216,7 +216,7 @@ void Fsm::runOneCycle(std::map <std::string, struct signal_data>& state)
                 {
                     if (!state[arg].calculated)
                     {
-                        theStack.push(st); // Push this same node back on, we have not yet calculate its value
+                        theStack.push(st); // Push this same node back on, we have not yet calculated its value
                         theStack.push(arg); // Push the argument that needs calculation
                         args_calculated = false;
                         break;
@@ -274,7 +274,7 @@ void Fsm::generateOutputs()
     // Generate a look up table of the permuations we want to try. Each permuation is of internal_signal_keys.size()
     static std::vector < std::vector <bool> > lut;
     lut.clear();
-    
+
     for (unsigned int i = 0;  i < max_permuations; i++)
     {
         std::vector<bool> temp;
