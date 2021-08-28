@@ -171,6 +171,12 @@ void Fsm::getUserInput()
 void Fsm::runOneCycle(std::map <std::string, struct signal_data>& signals_state)
 {
     // cout << getSignalStr(signals_state) << endl;
+    cout << "Pre-conditions: " << endl;
+    for (auto& signal : signals_state)
+    {
+        cout << signal.first  << "=" << signal.second.current_value << endl;
+    }
+
     displaySignals(signals_state);
     cout << " --> ";
     
@@ -244,7 +250,7 @@ void Fsm::runOneCycle(std::map <std::string, struct signal_data>& signals_state)
     }
 
     displaySignals(signals_state);
-    cout << endl;
+    cout << endl << endl;
     // cout << getSignalStr(signals_state) << endl << endl;
 };
 
@@ -326,7 +332,7 @@ void Fsm::generateOutputs()
         }
     }
 };
-    
+
 
 /*
     Purpose: Given all signals state map and the state to evaluate, perform evaluation

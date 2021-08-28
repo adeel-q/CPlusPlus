@@ -1,0 +1,11 @@
+9 8 2
+n1 = n2 OR n3
+r1 = FLIP_FLOP n1
+n2 = i1 AND r1
+n3 = NOT r1
+n6 = i1 AND n8
+n7 = n6 OR r2
+n8 = NOT r2
+r2 = FLIP_FLOP n6
+r1
+r2
