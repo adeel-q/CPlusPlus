@@ -21,6 +21,8 @@
 #include <vector>
 #include <functional>
 #include <stack>
+#include <queue>
+#include <set>
 #include <bitset>
 
 using namespace std;
@@ -60,6 +62,11 @@ public:
         vector<std::string> arguments;  // The dymamic list of arguments applied to the operation
         bool calculated = false;        // Whether this signal's value has been evaluated
         bool current_value = false;     // The current value of this signal
+        bool previous_value = false;     // The previous value of this signal
+        bool operator==(struct signal_data& other)
+        {
+            return other.current_value == current_value;
+        };
     };
 
     /*
@@ -211,6 +218,7 @@ public:
     */
     void runOneCycle(std::map <std::string, struct signal_data>& signals_state)
     {
+        // cout << getSignalStr(signals_state) << endl;
         displaySignals(signals_state);
         cout << " --> ";
         
@@ -218,28 +226,29 @@ public:
         
         std::stack<std::string> theStack;
 
-        theStack.push(signals_state.begin()->first);
+        for (auto signal : signals_state)
+        {
+            theStack.push(signal.first);
+        }
 
         while (theStack.size() > 0)
         {
             struct signal_data & temp = signals_state[theStack.top()];
             std::string st = theStack.top(); // Take a signal from the stack
             theStack.pop();
-            if (temp.calculated)
+            if (temp.calculated) 
             {
                 // Base case
                 // See if this signal has been calculated. If so, we will continue to the top and pop another signal
             }
+            if (temp.operation == OperatorEnum::FLIP_FLOP)
+            {
+                temp.calculated = true; // This has already been computed from a previous clock cycle (or zero initialized). simply use current_value
+            }
             // If the signal has not been calculated, determine if we can calculate it. If we have operands not yet calculated, push them to the stack
             else
             {
-                // Special case : the operation of a FLIP_FLOP is already "complete" from a previous clock cycle
-                // (or zero if first iteration)
-                if (temp.operation == OperatorEnum::FLIP_FLOP)
-                {
-                    temp.calculated = true; // This has already been computed from a previous clock cycle (or zero initialized). simply use current_value
-                }
-                else
+                if (temp.operation != OperatorEnum::NO_OPERATOR)
                 {
                     // See if all operands are available. If they are, calculate the signal value. 
                     //      On the next iteration it will pop and the Base case will be hit.
@@ -264,27 +273,36 @@ public:
                 }
             }
         }
+        
+        auto copy = signals_state; // Maintain the original signal values
 
-        // Refresh signal states including fli
+        // Refresh signal states to non-calculated state. Refresh all FF's to new values and calculated state
         for (auto& signal : signals_state)
         {
-            signal.second.calculated = false;
             // Important: refresh any flip flops now
             if (signal.second.operation == OperatorEnum::FLIP_FLOP)
             {
-                doOperation(signals_state, signal.second);
+                signal.second.current_value = copy[signal.second.arguments[0]].current_value;
+                signal.second.calculated = true;
+            }
+            else
+            {
+                signal.second.calculated = false;
             }
         }
 
         displaySignals(signals_state);
         cout << endl;
+        // cout << getSignalStr(signals_state) << endl << endl;
     };
 
     /*
         Purpose: Given input signals, generate all possible input signal values such that all states may be exercised
 
-        Description: Incomplete - This is where my issues lie. I can't seem to generate every possible state.
-
+        Description:    Permutes the inputs for every state transtiion possible. Attempts to transtiion state.
+                        If the current state has already been transitioned before, it will be ignored. We can tell
+                        which state has been transitioned by generating a bitstring tracking individual signal values.
+                        // TODO: This isn't working 100%, but I am able to generate all states at least once.
         Inputs: None
 
         Outputs: Void
@@ -306,22 +324,57 @@ public:
             }
             lut.push_back(temp);
         }
-        for (unsigned int outer = 0; outer < (max_permuations)*(max_permuations); outer++) //  N^2 number of possible states if in each state have two possible inputs
+
+        // For every permutation we generate a signal state. 
+        // For every successive signal state, we must again permuate the inputs to generate the next signal state
+        // We will have a lot of signal states so we reduce the amount by checking if the resultant next state has already ran through runOneCycle 
+        auto start_state = signals; // Entry point, the initial state
+
+        std::queue<std::map< std::string, struct signal_data>> theQueue; // Queue to hold the subsequent resultant arrays to runOneCycle on
+
+        std::set<std::string> states_visited; // Set to track which state we have already attempted to runOneCycle on
+
+        theQueue.push(start_state); // Begin by pushing the first state
+        states_visited.insert(getSignalStr(start_state)); // Add this state to the set
+
+        // cout << "start state " << getSignalStr(start_state) << endl;
+
+        while (theQueue.size() > 0)
         {
+            auto curr_state = theQueue.front(); // Deque state
+            theQueue.pop();
             for (unsigned int kk = 0;  kk < lut.size(); kk++)
             {
+                auto next_state = curr_state; // Save a version of the current state to permute
                 // We need to perform calculations for each possible permutation of internal_signals (beware)
                 // Fix intenal signals here
+
                 for (int n = 0; n < internal_signal_keys.size(); n++)
                 {
-                    signals[internal_signal_keys[n]].current_value = lut[kk][n];
-                    signals[internal_signal_keys[n]].calculated = true;
+                    next_state[internal_signal_keys[n]].current_value = lut[kk][n];
+                    next_state[internal_signal_keys[n]].calculated = true;
                 }
-                auto prev_state = signals; // caching the previous state
-                runOneCycle(signals);
+
+                // Populate next_state here
+                runOneCycle(next_state);
+              
+                // Check if this resultant next_state is a state we have already transitioned FROM
+                auto str = getSignalStr(next_state);
+                auto search = states_visited.find(str);
+                if (search != states_visited.end()) 
+                {
+                    // cout << "exists in set " << *search << endl << endl;
+                } 
+                else 
+                {
+                    states_visited.insert(str); // This is now a state we are about to transition FROM, add to the set
+                    // cout << "add to set " << str << endl << endl;;
+                    theQueue.push(next_state); // Push this state to calculate new resultant transitions
+                }
             }
         }
     }
+    
     
     /*
         Purpose: Given all signals state map and the state to evaluate, perform evaluation
@@ -343,7 +396,7 @@ public:
         {
             case OperatorEnum::FLIP_FLOP:
             {
-                temp.current_value = signals_state[temp.arguments[0]].current_value;
+                temp.current_value;
                 break;
             }
             case OperatorEnum::AND:
@@ -369,6 +422,25 @@ public:
             }
         }
     }
+
+    /*
+        Purpose: Given a signals state map, output the bitstring representing their values
+
+        Description: The user argument signals_to_display holds keys for the signals to display
+
+        Inputs: signals_state map
+
+        Outputs: std::string represetning all concatenated signal values.
+    */
+    std::string getSignalStr(std::map< std::string, struct signal_data>& signals_state)
+    {
+        std::string ret;
+        for ( auto& signal : signals_state )
+        {
+            ret += signal.second.current_value ? "1" : "0";
+        }
+        return ret;
+    };
 
     /*
         Purpose: Given all signals state map, display the signals marked for display
@@ -401,7 +473,7 @@ public:
     */
     bool andGate(bool a, bool b)
     {
-        return a && b;
+        return (a && b);
     };
 
     /*
@@ -415,7 +487,7 @@ public:
     */
     bool orGate(bool a, bool b)
     {
-        return a || b;
+        return (a || b);
     };
 
     /*
