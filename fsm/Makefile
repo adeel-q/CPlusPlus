@@ -1,2 +1,2 @@
 all:
-	g++ main.cpp -o a.out -lpthread -lrt
+	g++ main.cpp fsm.cpp
