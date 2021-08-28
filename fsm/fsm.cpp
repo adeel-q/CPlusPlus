@@ -272,7 +272,8 @@ void Fsm::generateOutputs()
     unsigned int max_permuations = 1 << internalSignals.size();
     // (0b000 = 0b1...111) 0b000
     // Generate a look up table of the permuations we want to try. Each permuation is of internal_signal_keys.size()
-    static std::vector < std::vector <bool> > lut; // Reduce stack usage
+    static std::vector < std::vector <bool> > lut;
+    lut.clear();
     
     for (unsigned int i = 0;  i < max_permuations; i++)
     {
@@ -365,6 +366,11 @@ void Fsm::doOperation(std::map< std::string, struct signal_data>& state, struct 
         case OperatorEnum::OR:
         {
             temp.current_value = orGate(state[temp.arguments[0]].current_value, state[temp.arguments[1]].current_value);
+            break;
+        }
+        case OperatorEnum::XOR:
+        {
+            temp.current_value = xorGate(state[temp.arguments[0]].current_value, state[temp.arguments[1]].current_value);
             break;
         }
         case OperatorEnum::NOT:

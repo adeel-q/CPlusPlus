@@ -34,11 +34,6 @@ public:
         vector<std::string> arguments;   // The dymamic list of arguments applied to the operation
         bool calculated = false;         // Whether this signal's value has been evaluated
         bool current_value = false;      // The current value of this signal
-        bool previous_value = false;     // The previous value of this signal
-        bool operator==(struct signal_data& other)
-        {
-            return other.current_value == current_value;
-        };
     };
 
     /*
@@ -179,8 +174,8 @@ public:
 
 
 private:
-    std::vector<std::string> signalsToDisplay;            // Track signal keys that will allowed for display
-    std::vector< std::string> internalSignals;         // Track the internal signal keys
+    std::vector<std::string> signalsToDisplay;              // Track signal keys that will allowed for display
+    std::vector< std::string> internalSignals;              // Track the internal signal keys
     std::map< std::string, struct signal_data> signals;     // Original Signal data
 };
 
