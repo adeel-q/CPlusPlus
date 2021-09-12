@@ -230,8 +230,8 @@ void displayLinkedList(LinkedList_t* theLinkedList)
         }
     }
     printf("\n\n");
-
 }
+
 void displayLinkedListInfo(LinkedList_t* theLinkedList)
 {
     printf("size=[%lu]\n", theLinkedList->size);
