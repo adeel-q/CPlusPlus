@@ -84,6 +84,7 @@ int addElement(LinkedList_t* theLinkedList, int element)
         // If adding the first element in the empty list
         if (isEmpty(theLinkedList))
         {
+            theLinkedList->head = &theLinkedList->_node_pool[0];
             theLinkedList->head->value = element;
             theLinkedList->head->free = 0; // Mark in-use
             theLinkedList->head->next = 0;
@@ -197,6 +198,23 @@ int deleteElement(LinkedList_t* theLinkedList, int element)
     }
 }
 
+void deleteWithoutHead(Node_t* nodeToDelete)
+{
+    // [?] -> [node1] ->[nodeToDelete] -> NULL
+    // [?] -> [node1] ->[nodeToDelete] -> [node2]
+    if(nodeToDelete)
+    {
+        if (!nodeToDelete->next)
+        {
+            // Can't delete need head
+            return;
+        }
+        nodeToDelete->value = nodeToDelete->next->value; // Copy value of the next node into current node. In effect, we do not update links but we update the value
+        nodeToDelete->next->free = 1; // Mark as free
+
+    }
+}
+
 void displayLinkedList(LinkedList_t* theLinkedList)
 {
     Node_t* node = theLinkedList->head;
@@ -229,7 +247,7 @@ void displayAllocated(LinkedList_t* theLinkedList)
     Node_t* node = theLinkedList->_node_pool;
     for (size_t i = 0; i < theLinkedList->size; i++)
     {
-        printf("{[@%x] [%i] next[@%x]} -> ", &theLinkedList->_node_pool[i], theLinkedList->_node_pool[i].value, theLinkedList->_node_pool[i].next);
+        printf("{[@%x] [%i] next[@%x]} ; ", &theLinkedList->_node_pool[i], theLinkedList->_node_pool[i].value, theLinkedList->_node_pool[i].next);
     }
     printf("\n");
 }
