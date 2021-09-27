@@ -93,13 +93,25 @@ int addElement(LinkedList_t* theLinkedList, int element)
         else
         {
             // Allocate Node_t from node pool
-            int found = 0;
+            int found = -1;
             size_t i =0;
-            while( (theLinkedList->_node_pool[i].free == 0) && (i < theLinkedList->size) )
+            // while( (theLinkedList->_node_pool[i].free == 0) && (i < theLinkedList->size) )
+            // {
+            //     i++;
+            // }
+            for (i = 0; ((found==-1) && (i < theLinkedList->size) ); i++)
             {
-                i++;
+                // Find available node to populate
+                if (theLinkedList->_node_pool[i].free == 1)
+                {
+                    found = i; // Break out of for loop
+                    printf("nodepool[%i].free=%i\n", i,theLinkedList->_node_pool[found].free);
+                    assert(theLinkedList->_node_pool[found].free == 1);
+                }
+                printf("continue at %i\n", i);
             }
-            assert(theLinkedList->_node_pool[i].free == 1); // This assertion should always be true! If this fails, then that means array was *not* full but we did not find a free node.
+            printf("nodepool[%i].free=%i\n", i,theLinkedList->_node_pool[found].free);
+            assert(theLinkedList->_node_pool[found].free == 1); // This assertion should always be true! If this fails, then that means array was *not* full but we did not find a free node.
             // Mark allocated
             Node_t* targetNode = &theLinkedList->_node_pool[i];
             targetNode->value = element; // Will be null if appending
