@@ -21,6 +21,17 @@
 
 using namespace std;
 
+/* 
+----TODOs----
+
+1) Implement cond_wait_timed on send thread
+    a) Add proper handling for unsolicited message. 
+    b) Recv thread should read message and designate into unsolcited queue, solicted queue
+    c) Based on message type, notify each condition
+    d) An unsolicited thread handler may exist. This thread should wait on the condition that we recvd an unsolicted message. Upon wakeup, take appropriate action
+    e) sendThread should wait on the condition that we recvd a solicted message OR it should timeout and unblock
+*/
+
 class Chassis
 {
 public:
@@ -118,6 +129,8 @@ public:
 
             for (int i = 0; i < 5; i++)
             {
+                for (unsigned long long j = 0; j < 0xF000000; j++);
+
                 printf("doing tranaction %i/5\n", i+1);
                 vector<uint8_t> sendMsg = {5, 10, 15};
                 sendQueueLock.lock();
@@ -178,9 +191,8 @@ public:
         }
         pthread_mutex_unlock(&ipmc_in_use); // drop the mutex so another (hi) priority thread can use the ipmc to send
         printf("POST Thread done using ipmc transaction\n");
-        sched_yield();
-        
         printf("POST IBIT exit\n");
+        sched_yield();
     };
 
     void cstThread()
@@ -203,6 +215,7 @@ public:
             
             for (int i = 0; i < 10; i++)
             {
+                sleep(1);
                 printf("CST thread waiting for the ipmc\n");
                 int ret = pthread_mutex_lock(&ipmc_in_use);
                 printf("CST thread has the IPMC, lock returned %i\n", ret);
@@ -221,7 +234,7 @@ public:
                 printf("CST Ipmc was done recv, message queue ready to be processed\n");
                 pthread_mutex_unlock(&ipmc_in_use); // drop the mutex so another (hi) priority thread can use the ipmc to send
                 printf("CST Thread done using ipmc transaction\n");
-                sched_yield();
+                // sched_yield();
                 // Revert Priority to normal
                 // yield CPU to let high priority thread run. If no other high pri, then this will resume control
                 // CST message processing
@@ -244,7 +257,11 @@ public:
             bytes.push_back(0x02);
             bytes.push_back(0x03);
             sleep(1); // forever loop
-            
+            // counting semaphore on the recv buffer
+            // when count reaches max, block until a consoomer can read it all in
+            // when a singal message arrives, notify senders that are waiting that a reception has occured.
+            // if a sender is not waiting, then let the idle recver be notified and process an unsolicited message
+
             // while (recvThreadQ.size() < 5)
             // {
             //     recvQueueLock.lock();
@@ -259,6 +276,8 @@ public:
     };
 
     // This thread is gaurented to finish and also unlock anyone holding ipmc_done.
+    // Establis a "send context" such a that a recvQueue which has size > 1 can distinguish between the unsolicited and solicited message
+    // Peer into the message contents and set timeoutflag and also fill and notify the appropriate threads to handle messages
     void sendThread()
     {
         while (true)
@@ -286,7 +305,7 @@ public:
                 printf("the queue size after pop is %i\n", sendThreadQ.size());
                 // Wait timeout ms
                 printf("SEND NOTHING ELSE SHOULD WRITE TO ME\n");
-                sleep(5);
+                sleep(0.5);
                 printf("SEND DONE SLEEPING\n");
                 // On wakeup, check a recv queue.
                 recvQueueLock.lock();
