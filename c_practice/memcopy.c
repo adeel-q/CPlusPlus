@@ -149,12 +149,16 @@ int testStrStr(void)
     }
 }
 
+static int * f()
+{
+    static int x = 2;
+    return &x;
+}
 
 int main(void)
 {
-
-    testStrStr();
-    return 0;
+    int* p = f();
+    printf("%i\n", *p);
 
     unsigned int arr1[10] = {2, 4, 6, 8, 10, 12};
     unsigned int arr2[10] = {1, 1, 1, 1, 1, 1};

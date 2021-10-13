@@ -5,8 +5,13 @@
 #define MAX_MSG_SIZE  7
 #define MAX_BUFFER_SIZE  256
 
-#define COLLECT_NEW 0
-#define COLLECT_REMAINING 1
+// #define COLLECT_NEW 0
+// #define COLLECT_REMAINING 1
+
+enum States {
+    COLLECT_NEW = 0,
+    COLLECT_REMAINING = 1,
+};
 
 static int currentState = COLLECT_NEW;
 
